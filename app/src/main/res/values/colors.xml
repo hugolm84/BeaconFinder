@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="default_background_color">#404040</color>
+    <color name="background">#40000000</color>
+    <color name="associate_row_background">#e0ffff</color>
+    <color name="associate_rssi">#101010</color>
+    <color name="associate_uuid">@android:color/black</color>
+    <color name="status">#ffaaaaaa</color>
+    <color name="rssi">#ffaaaaaa</color>
+    <color name="device_name">@android:color/white</color>
+    <color name="selected_color">#99ccff</color>
+    <color name="button_color">#AAAAAA</color>
+    <color name="black">#000</color>
+    <color name="blue">#00f</color>
+    <color name="red">#f00</color>
+    <color name="button_pressed">#0001ee</color>
+</resources>
