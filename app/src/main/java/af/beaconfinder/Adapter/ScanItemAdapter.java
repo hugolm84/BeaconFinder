@@ -1,8 +1,7 @@
-package af.beaconfinder.ScanInfo;
+package af.beaconfinder.Adapter;
 
 import android.app.Activity;
 import android.content.Context;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -10,11 +9,10 @@ import android.widget.BaseAdapter;
 import android.widget.TextView;
 
 import java.util.ArrayList;
-import java.util.Collections;
 
 import af.beaconfinder.R;
-import af.beaconfinder.Service.BeaconFilter;
-
+import af.beaconfinder.ScanInfo.ScanItem;
+import af.beaconfinder.Beacon.BeaconFilter;
 /**
  * Created by hugo on 11/02/15.
  */
@@ -62,7 +60,7 @@ public class ScanItemAdapter extends BaseAdapter {
         ScanItem info = items.get(position);
         nameText.setText(info.getName());
         addressText.setText(info.getMacAddress());
-        distanceText.setText(String.format("%.2f", BeaconFilter.convertDistance(info)) + "m or " + String.format("%.2f", BeaconFilter.getDistance(info)));
+        distanceText.setText(String.format("%.2f", BeaconFilter.convertDistance(info))+ "m");
         rssiText.setText(String.valueOf(info.getRssi()) + "dBm" + " mTx:" + info.getMeasuredPower());
 
         return vi;

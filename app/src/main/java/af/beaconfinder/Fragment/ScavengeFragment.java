@@ -9,12 +9,13 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+
 import java.util.ArrayList;
 import java.util.ListIterator;
 
 import af.beaconfinder.R;
 import af.beaconfinder.ScanInfo.ScanItem;
-import af.beaconfinder.Service.BeaconFilter;
+import af.beaconfinder.Beacon.BeaconFilter;
 
 /**
  * A simple {@link Fragment} subclass.
@@ -25,6 +26,7 @@ import af.beaconfinder.Service.BeaconFilter;
  * create an instance of this fragment.
  */
 public class ScavengeFragment extends BluetoothScannerFragment implements View.OnClickListener {
+
 
     private static final String TAG = "ScavengeFragment";
     private View mView;
@@ -108,11 +110,11 @@ public class ScavengeFragment extends BluetoothScannerFragment implements View.O
             ScanItem item = items.get(iterator.nextIndex());
             Button btn = iterator.next();
             btn.setText("" + item.getMacAddress());
-            if(BeaconFilter.getDistance(item) < 1) {
+            if(BeaconFilter.convertDistance(item) < 1) {
                 btn.getBackground().setColorFilter(Color.GREEN, PorterDuff.Mode.MULTIPLY);
             }
             else {
-                    btn.getBackground().setColorFilter(Color.WHITE, PorterDuff.Mode.MULTIPLY);
+                btn.getBackground().setColorFilter(Color.WHITE, PorterDuff.Mode.MULTIPLY);
             }
         }
     }

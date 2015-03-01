@@ -2,6 +2,7 @@ package af.beaconfinder.Fragment;
 
 import android.app.Activity;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -9,11 +10,16 @@ import android.widget.AbsListView;
 import android.widget.AdapterView;
 import android.widget.Button;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.util.ArrayList;
 
+import af.beaconfinder.MainActivity;
 import af.beaconfinder.R;
 import af.beaconfinder.ScanInfo.ScanItem;
-import af.beaconfinder.ScanInfo.ScanItemAdapter;
+import af.beaconfinder.Adapter.ScanItemAdapter;
+import af.beaconfinder.Beacon.BeaconFilter;
 
 /**
  * A fragment representing a list of Items.
@@ -36,6 +42,7 @@ public class ScanItemFragment extends BluetoothScannerFragment implements AbsLis
     private static ArrayList<ScanItem> mScanResults = new ArrayList<ScanItem>();
     private static ScanItemAdapter mScanResultsAdapter;
 
+
     public static ScanItemFragment newInstance(int sectionNumber) {
         ScanItemFragment fragment = new ScanItemFragment();
         Bundle args = new Bundle();
@@ -54,9 +61,17 @@ public class ScanItemFragment extends BluetoothScannerFragment implements AbsLis
     void handleScannedItems(ArrayList<ScanItem> items) {
         clearScanResults();
         //Collections.sort(items);
+        JSONObject data = new JSONObject();
         for(ScanItem item : items) {
             mScanResults.add(item);
+            try {
+                data.put(item.getMacAddress(),String.format("%.2f", BeaconFilter.convertDistance(item)));
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
         }
+        Log.d(TAG, "Sending pos" + data.toString());
+        ((MainActivity)getActivity()).getSocketIO().send("position", data);
         mScanResultsAdapter.notifyDataSetChanged();
     }
 

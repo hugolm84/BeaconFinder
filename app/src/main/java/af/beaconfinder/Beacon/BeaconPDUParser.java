@@ -1,7 +1,6 @@
-package af.beaconfinder.Service;
+package af.beaconfinder.Beacon;
 
 import android.bluetooth.BluetoothDevice;
-import android.util.Log;
 
 import java.util.InvalidPropertiesFormatException;
 
@@ -51,7 +50,7 @@ public class BeaconPDUParser {
      * @param rssi
      * @param scanRecord
      */
-    protected ScanItem handleFoundDevice(BluetoothDevice device, int rssi,
+    public ScanItem handleFoundDevice(BluetoothDevice device, int rssi,
                                      byte[] scanRecord) throws InvalidPropertiesFormatException {
 
         final String scanRecordAsHex = toHex(scanRecord);

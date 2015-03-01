@@ -16,7 +16,6 @@ import android.widget.Toast;
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.InvalidPropertiesFormatException;
 import java.util.List;
 import java.util.Map;
@@ -24,16 +23,14 @@ import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingDeque;
 
+import af.beaconfinder.Beacon.BeaconFilter;
+import af.beaconfinder.Beacon.BeaconPDUParser;
 import af.beaconfinder.ScanInfo.ScanItem;
 
 public class BluetoothScannerService extends Service implements BluetoothAdapter.LeScanCallback {
 
     private static final String TAG = "BluetoothScannerService";
     public static final String TAG_PARCEL = TAG+"ScanItemArrayList";
-    public static final String TAG_PARCEL_POSITION = TAG+"ScanItemCalcuatedPositionArray";
-
-
-    final List<double[]> positions = new ArrayList<>();
 
     private final IBinder mBinder = new BluetoothScannerBinder();
 
@@ -58,7 +55,7 @@ public class BluetoothScannerService extends Service implements BluetoothAdapter
      */
     private final Handler mHandler = new Handler();
 
-    private static int BUFFER_SIZE = 50;
+    private static int BUFFER_SIZE = 50; // 50 scans per second
     private final static ArrayList<ScanItem> mScanResults = new ArrayList<>();
     private final static ConcurrentHashMap<String, BlockingDeque<Integer>> mScanHistory = new ConcurrentHashMap<>();
 
@@ -93,8 +90,6 @@ public class BluetoothScannerService extends Service implements BluetoothAdapter
             Toast.makeText(this, "No LE Support.", Toast.LENGTH_SHORT).show();
             return START_STICKY;
         }
-
-
         this.scanningActive = true;
         return START_STICKY;
     }
@@ -113,7 +108,7 @@ public class BluetoothScannerService extends Service implements BluetoothAdapter
     }
 
     /**
-     * Scanning for 2 seconds, then notifies binders
+     * Scanning for 1 seconds, then notifies binders
      */
     private void startScanningCycle() {
         if (this.scanningActive) {
@@ -163,19 +158,20 @@ public class BluetoothScannerService extends Service implements BluetoothAdapter
                 for (Map.Entry<String, BlockingDeque<Integer>> entry : mScanHistory.entrySet()) {
                     final BlockingDeque<Integer> values = entry.getValue();
                     synchronized (values) {
-                        if (values.size() > 50) {
+
+                        if (values.size() > BUFFER_SIZE) {
 
 
                             DescriptiveStatistics stats = BeaconFilter.statistics(values);
 
-                            Log.d(TAG, entry.getKey()
+                            /*Log.d(TAG, entry.getKey()
                                     + "\nDistanceMean:" + stats.getMean()
                                     + "\nGeoMean:" + stats.getGeometricMean()
                                     + "\nSkew:" + stats.getSkewness()
                                     + "\nStDev" + stats.getStandardDeviation()
                                     + "\nVariance" + stats.getVariance()
                                     + "\nPopVariance" + stats.getPopulationVariance());
-
+                            */
                             for (ScanItem info : mScanResults) {
                                 if (info.getMacAddress().equalsIgnoreCase((entry.getKey()))) {
                                     info.setRssi((int) stats.getMean());

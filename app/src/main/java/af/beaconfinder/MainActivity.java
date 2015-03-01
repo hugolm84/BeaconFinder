@@ -13,13 +13,15 @@ import android.widget.Toast;
 import af.beaconfinder.Fragment.BaseFragment;
 import af.beaconfinder.Fragment.ScanItemFragment;
 import af.beaconfinder.Fragment.ScavengeFragment;
-import af.beaconfinder.Fragment.TrilaterationFragment;
+import af.beaconfinder.Fragment.TrilaterationCanvasFragment;
 import af.beaconfinder.Service.BluetoothScannerService;
+import af.beaconfinder.Socket.IO.SocketIO;
 
 
 public class MainActivity extends ActionBarActivity
         implements NavigationDrawerFragment.NavigationDrawerCallbacks, BaseFragment.OnFragmentInteractionListener {
 
+    private SocketIO socketIO = null;
     /**
      * Fragment managing the behaviors, interactions and presentation of the navigation drawer.
      */
@@ -53,6 +55,12 @@ public class MainActivity extends ActionBarActivity
         mNavigationDrawerFragment.setUp(
                 R.id.navigation_drawer,
                 (DrawerLayout) findViewById(R.id.drawer_layout));
+        socketIO = new SocketIO(this);
+
+    }
+
+    public SocketIO getSocketIO() {
+        return socketIO;
     }
 
     @Override
@@ -73,7 +81,7 @@ public class MainActivity extends ActionBarActivity
         }
         if(position == 2) {
             fragmentManager.beginTransaction()
-                    .replace(R.id.container, TrilaterationFragment.newInstance(position + 1))
+                    .replace(R.id.container, TrilaterationCanvasFragment.newInstance(position + 1))
                     .commit();
             return;
         }
