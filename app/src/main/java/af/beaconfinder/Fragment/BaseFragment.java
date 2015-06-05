@@ -12,7 +12,6 @@ import af.beaconfinder.R;
 
 public class BaseFragment extends Fragment {
 
-    protected static String TAG = BaseFragment.class.getSimpleName();
     protected static final String ARG_SECTION_NUMBER = "section_number";
 
     public static BaseFragment newInstance(int sectionNumber) {
@@ -47,7 +46,6 @@ public class BaseFragment extends Fragment {
     }
 
     public interface OnFragmentInteractionListener {
-        // TODO: Update argument type and name
         public void onFragmentInteraction(String id);
     }
 }

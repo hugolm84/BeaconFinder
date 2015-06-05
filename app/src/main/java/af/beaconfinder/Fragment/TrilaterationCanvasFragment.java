@@ -15,9 +15,6 @@ import af.beaconfinder.R;
 import af.beaconfinder.ScanInfo.ScanItem;
 import af.beaconfinder.View.CanvasView;
 
-/**
- * Created by hugo on 01/03/15.
- */
 public class TrilaterationCanvasFragment extends BluetoothScannerFragment {
 
     private static final String TAG = "TrilaterationCanvasFragment";
@@ -43,6 +40,14 @@ public class TrilaterationCanvasFragment extends BluetoothScannerFragment {
 
 
     @Override
+    protected void onServiceConnected() {
+    }
+
+    @Override
+    protected void onServiceDisconnected() {
+    }
+
+    @Override
     void handleScannedItems(ArrayList<ScanItem> items) {
         ListIterator<ScanItem> it = items.listIterator();
         while(it.hasNext()) {
@@ -51,8 +56,6 @@ public class TrilaterationCanvasFragment extends BluetoothScannerFragment {
         }
 
         Trilateration.Point p = mTrilateration.calculatePosition();
-
-        Log.d(TAG, "X:" + p.x + " Y:" + p.y);
         mCanvasView.updatePositionPoint(p);
     }
 }

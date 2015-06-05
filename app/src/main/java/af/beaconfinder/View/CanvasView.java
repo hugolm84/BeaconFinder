@@ -79,9 +79,6 @@ public class CanvasView extends View {
     }
 
     private void drawCircle(Canvas canvas, float x, float y, float r, int color) {
-        //if(r > 2000) {
-        //    return;
-        //}
         Log.d(TAG, "Drawing cricle at x: " + x + " y:" + y + " r:" +r);
         circlePaint.setColor(color);
         canvas.drawCircle(x, y, r, circlePaint);
