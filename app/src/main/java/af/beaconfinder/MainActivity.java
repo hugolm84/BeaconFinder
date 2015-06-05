@@ -1,10 +1,15 @@
 package af.beaconfinder;
 
+import android.content.ComponentName;
+import android.content.Context;
 import android.content.Intent;
+import android.content.ServiceConnection;
+import android.os.IBinder;
 import android.support.v7.app.ActionBarActivity;
 import android.support.v7.app.ActionBar;
 import android.support.v4.app.FragmentManager;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.support.v4.widget.DrawerLayout;
@@ -15,13 +20,15 @@ import af.beaconfinder.Fragment.ScanItemFragment;
 import af.beaconfinder.Fragment.ScavengeFragment;
 import af.beaconfinder.Fragment.TrilaterationCanvasFragment;
 import af.beaconfinder.Service.BluetoothScannerService;
-import af.beaconfinder.Socket.IO.SocketIO;
-
+import af.beaconfinder.Socket.IO.SocketIOService;
+import af.beaconfinder.Socket.IO.SocketIOStatic;
 
 public class MainActivity extends ActionBarActivity
         implements NavigationDrawerFragment.NavigationDrawerCallbacks, BaseFragment.OnFragmentInteractionListener {
 
-    private SocketIO socketIO = null;
+
+    private static final String TAG = "MainActivity";
+
     /**
      * Fragment managing the behaviors, interactions and presentation of the navigation drawer.
      */
@@ -32,19 +39,48 @@ public class MainActivity extends ActionBarActivity
      */
     private CharSequence mTitle;
 
+    private SocketIOService mBackgroundSocketService;
+    private ServiceConnection mSocketConnection = new ServiceConnection() {
+
+        public void onServiceConnected(ComponentName className,
+                                       IBinder service) {
+            SocketIOService.LocalBinder binder = (SocketIOService.LocalBinder) service;
+            mBackgroundSocketService = binder.getService();
+            Log.d(TAG, "Connected Service!");
+        }
+
+        public void onServiceDisconnected(ComponentName arg0) {
+            Log.d(TAG, "DisConnected Service!");
+        }
+    };
+
+    public SocketIOService ioService() {
+        return mBackgroundSocketService;
+    }
+
     /**
      * Do not run scanner thread in the background if application is not in foreground
      */
     @Override
     protected void onStop() {
         super.onStop();
-        Intent intent = new Intent(this, BluetoothScannerService.class);
-        stopService(intent);
+        if(mBackgroundSocketService != null)
+            mBackgroundSocketService.stopSelf();
+    }
+
+    @Override
+    protected void onDestroy() {
+        unbindService(mSocketConnection);
+        super.onDestroy();
     }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+
+        Log.d(TAG, "onCreate");
+
         setContentView(R.layout.activity_main);
 
         mNavigationDrawerFragment = (NavigationDrawerFragment)
@@ -55,12 +91,10 @@ public class MainActivity extends ActionBarActivity
         mNavigationDrawerFragment.setUp(
                 R.id.navigation_drawer,
                 (DrawerLayout) findViewById(R.id.drawer_layout));
-        socketIO = new SocketIO(this);
 
-    }
-
-    public SocketIO getSocketIO() {
-        return socketIO;
+        Intent intent = new Intent(this, SocketIOService.class);
+        bindService(intent, mSocketConnection, Context.BIND_AUTO_CREATE);
+        startService(intent);
     }
 
     @Override
