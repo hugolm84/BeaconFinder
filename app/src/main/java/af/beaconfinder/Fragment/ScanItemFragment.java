@@ -21,21 +21,11 @@ import af.beaconfinder.ScanInfo.ScanItem;
 import af.beaconfinder.Adapter.ScanItemAdapter;
 import af.beaconfinder.Beacon.BeaconFilter;
 
-/**
- * A fragment representing a list of Items.
- * <p/>
- * Large screen devices (such as tablets) are supported by replacing the ListView
- * with a GridView.
- * <p/>
- * Activities containing this fragment MUST implement the {@link OnFragmentInteractionListener}
- * interface.
- */
-public class ScanItemFragment extends BluetoothScannerFragment implements AbsListView.OnItemClickListener, View.OnClickListener {
+public class ScanItemFragment extends BluetoothScannerFragment implements AbsListView.OnItemClickListener  {
 
     private static final String TAG = "ScanItemFragment";
     private OnFragmentInteractionListener mListener;
 
-    private boolean scanning = false;
     private AbsListView mScanListView = null;
     private Button mBtnScan = null;
 
@@ -58,21 +48,21 @@ public class ScanItemFragment extends BluetoothScannerFragment implements AbsLis
     }
 
     @Override
+    protected void onServiceConnected() {
+        mBtnScan.setText( mService.isScanningActive() ? "Stop" : "Start");
+    }
+
+    @Override
+    protected void onServiceDisconnected() {
+        mBtnScan.setText( mService.isScanningActive() ? "Stop" : "Start");
+    }
+
+    @Override
     void handleScannedItems(ArrayList<ScanItem> items) {
         clearScanResults();
-        //Collections.sort(items);
-        JSONObject data = new JSONObject();
-        for(ScanItem item : items) {
-            mScanResults.add(item);
-            try {
-                data.put(item.getMacAddress(),String.format("%.2f", BeaconFilter.convertDistance(item)));
-            } catch (JSONException e) {
-                e.printStackTrace();
-            }
-        }
-        Log.d(TAG, "Sending pos" + data.toString());
-        ((MainActivity)getActivity()).getSocketIO().send("position", data);
+        mScanResults.addAll(items);
         mScanResultsAdapter.notifyDataSetChanged();
+        sendNearestPosition(items);
     }
 
     @Override
@@ -88,7 +78,6 @@ public class ScanItemFragment extends BluetoothScannerFragment implements AbsLis
         mScanListView.setOnItemClickListener(this);
         mBtnScan = (Button) view.findViewById(R.id.scanButton);
         mBtnScan.setOnClickListener(this);
-
         return view;
     }
 
@@ -99,22 +88,6 @@ public class ScanItemFragment extends BluetoothScannerFragment implements AbsLis
         mScanResults.clear();
         // Make sure the display is updated; any old devices are removed from the ListView.
         mScanResultsAdapter.notifyDataSetChanged();
-    }
-
-    @Override
-    public void onClick(View v) {
-        switch (v.getId()) {
-            case R.id.scanButton:
-                if(!scanning) {
-                    mService.resume();
-                }
-                else {
-                    mService.pause();
-                }
-                scanning = !scanning;
-                mBtnScan.setText( scanning ? "Stop" : "");
-                break;
-        }
     }
 
     @Override

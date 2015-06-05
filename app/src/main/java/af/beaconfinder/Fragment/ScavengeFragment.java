@@ -5,33 +5,31 @@ import android.graphics.Color;
 import android.graphics.PorterDuff;
 import android.os.Bundle;
 import android.app.Fragment;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.ListIterator;
+import java.util.Random;
 
+import af.beaconfinder.MainActivity;
 import af.beaconfinder.R;
 import af.beaconfinder.ScanInfo.ScanItem;
 import af.beaconfinder.Beacon.BeaconFilter;
 
-/**
- * A simple {@link Fragment} subclass.
- * Activities that contain this fragment must implement the
- * {@link ScavengeFragment.OnFragmentInteractionListener} interface
- * to handle interaction events.
- * Use the {@link ScavengeFragment#newInstance} factory method to
- * create an instance of this fragment.
- */
-public class ScavengeFragment extends BluetoothScannerFragment implements View.OnClickListener {
+public class ScavengeFragment extends BluetoothScannerFragment {
 
 
     private static final String TAG = "ScavengeFragment";
     private View mView;
     private OnFragmentInteractionListener mListener;
     private ArrayList<Button> mButtons = new ArrayList<>();
+    private Button mBtnScan = null;
 
     public static ScavengeFragment newInstance(int sectionNumber) {
         ScavengeFragment fragment = new ScavengeFragment();
@@ -41,10 +39,11 @@ public class ScavengeFragment extends BluetoothScannerFragment implements View.O
         return fragment;
     }
 
-    public ScavengeFragment() {
-        // Required empty public constructor
+    public static int randInt(int min, int max) {
+        Random rand = new Random();
+        int randomNum = rand.nextInt((max - min) + 1) + min;
+        return randomNum;
     }
-
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
@@ -56,14 +55,28 @@ public class ScavengeFragment extends BluetoothScannerFragment implements View.O
         mButtons.add((Button)mView.findViewById(R.id.btn1));
         mButtons.add((Button)mView.findViewById(R.id.btn2));
 
+        for(final Button btn : mButtons) {
+            btn.setOnClickListener(new View.OnClickListener() {
+                public void onClick(View v) {
+                    Log.d(TAG, "Clicked " + btn.getText());
+                    ((MainActivity)getActivity()).ioService().updatePosition(btn.getText().toString(), String.valueOf(randInt(0, 2)));
+                }
+            });
+        }
+
+        mBtnScan = (Button) mView.findViewById(R.id.scanButton);
+        mBtnScan.setOnClickListener(this);
         return mView;
     }
 
+    @Override
+    protected void onServiceConnected() {
+        mBtnScan.setText( mService.isScanningActive() ? "Stop" : "Start");
+    }
 
-    public void onButtonPressed(String id) {
-        if (mListener != null) {
-            mListener.onFragmentInteraction(id);
-        }
+    @Override
+    protected void onServiceDisconnected() {
+        mBtnScan.setText( mService.isScanningActive() ? "Stop" : "Start");
     }
 
     @Override
@@ -99,23 +112,29 @@ public class ScavengeFragment extends BluetoothScannerFragment implements View.O
             updateButtons(items);
     }
 
-    @Override
-    public void onClick(View v) {
-
-    }
 
     private void updateButtons(ArrayList<ScanItem> items) {
+
+        ScanItem min = Collections.min(items, new Comparator<ScanItem>() {
+            public int compare(ScanItem a, ScanItem b) {
+                return new Double(BeaconFilter.convertDistance(a)).compareTo(new Double(BeaconFilter.convertDistance(b)));
+            }
+        });
+
         ListIterator<Button> iterator = mButtons.listIterator();
         while(iterator.hasNext()) {
             ScanItem item = items.get(iterator.nextIndex());
             Button btn = iterator.next();
             btn.setText("" + item.getMacAddress());
-            if(BeaconFilter.convertDistance(item) < 1) {
+            if(item.equals(min)) {
                 btn.getBackground().setColorFilter(Color.GREEN, PorterDuff.Mode.MULTIPLY);
             }
             else {
                 btn.getBackground().setColorFilter(Color.WHITE, PorterDuff.Mode.MULTIPLY);
             }
         }
+
+        sendPosition(min.getMacAddress(), BeaconFilter.convertDistance(min));
     }
+
 }
