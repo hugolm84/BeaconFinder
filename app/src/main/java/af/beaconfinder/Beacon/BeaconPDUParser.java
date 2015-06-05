@@ -1,14 +1,13 @@
 package af.beaconfinder.Beacon;
 
 import android.bluetooth.BluetoothDevice;
+import android.os.Build;
+import android.util.Log;
 
 import java.util.InvalidPropertiesFormatException;
 
 import af.beaconfinder.ScanInfo.ScanItem;
 
-/**
- * Created by hugo on 11/02/15.
- */
 public class BeaconPDUParser {
 
     private final static String TAG = "BeaconPDUParser";
@@ -16,16 +15,6 @@ public class BeaconPDUParser {
     private static final char[] HEX_CHARS = {
             '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'
     };
-
-    protected static byte toByte(String hex) {
-        int result = Integer.parseInt(hex, 16);
-
-        if (result > 127) {
-            result -= 256;
-        }
-
-        return (byte)result;
-    }
 
     protected int unsignedByteToInt(byte value) {
         return value & 0xff;
