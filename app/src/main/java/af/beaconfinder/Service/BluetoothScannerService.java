@@ -8,16 +8,15 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Binder;
+import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
 import android.util.Log;
 import android.widget.Toast;
 
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
-
 import java.util.ArrayList;
 import java.util.InvalidPropertiesFormatException;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.ConcurrentHashMap;
@@ -29,10 +28,28 @@ import af.beaconfinder.ScanInfo.ScanItem;
 
 public class BluetoothScannerService extends Service implements BluetoothAdapter.LeScanCallback {
 
-    private static final String TAG = "BluetoothScannerService";
-    public static final String TAG_PARCEL = TAG+"ScanItemArrayList";
+    private static final String TAG             = "BluetoothScannerService";
+    public  static final String TAG_PARCEL      = "ScanItemArrayList";
+    // @HACK I have not figured out yet how to set Bluetooth Type in CSR code. This checks for
+    // vendor, 00025B	Cambridge Silicon
+    private static final String CAMBRIDGE_TAG   = "00:02:5B:00";
+    private static final Long   INTERVAL        = 3000l;
 
     private final IBinder mBinder = new BluetoothScannerBinder();
+    private final BeaconPDUParser mParser = new BeaconPDUParser();
+
+    /**
+     * Scan history and message handler
+     */
+    private static int BUFFER_SIZE = 100;
+    private final Handler mHandler = new Handler();
+    private final static ArrayList<ScanItem> mScanResults = new ArrayList<>();
+    private final static ConcurrentHashMap<String, BlockingDeque<Integer>> mScanHistory = new ConcurrentHashMap<>();
+
+    private boolean mHasLeSupport = true;
+    private boolean scanningActive = false;
+    private BluetoothAdapter mBluetoothAdapter;
+    private Intent parcelIntent = new Intent(TAG_PARCEL);
 
     public class BluetoothScannerBinder extends Binder {
         public BluetoothScannerService getService() {
@@ -45,20 +62,6 @@ public class BluetoothScannerService extends Service implements BluetoothAdapter
         return mBinder;
     }
 
-    private BeaconPDUParser mParser = new BeaconPDUParser();
-    private BluetoothAdapter mBluetoothAdapter;
-    private volatile boolean scanningActive = false;
-    private Intent parcelIntent = new Intent(TAG_PARCEL);
-
-    /**
-     * Handle messages on the main thread
-     */
-    private final Handler mHandler = new Handler();
-
-    private static int BUFFER_SIZE = 50; // 50 scans per second
-    private final static ArrayList<ScanItem> mScanResults = new ArrayList<>();
-    private final static ConcurrentHashMap<String, BlockingDeque<Integer>> mScanHistory = new ConcurrentHashMap<>();
-
     @Override
     public void onCreate() {
         super.onCreate();
@@ -69,123 +72,145 @@ public class BluetoothScannerService extends Service implements BluetoothAdapter
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId){
-        /*
-         * We need to enforce that Bluetooth is first enabled, and take the
-         * user to settings to enable it if they have not done so.
-         */
 
+        /**
+         * Bluetooth is disabled, ask user to enable it
+         */
         if (mBluetoothAdapter == null || !mBluetoothAdapter.isEnabled()) {
-            //Bluetooth is disabled
             Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
             enableBtIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             startActivity(enableBtIntent);
         }
 
         /*
-         * Check for Bluetooth LE Support.  In production, our manifest entry will keep this
-         * from installing on these devices, but this will allow test devices or other
-         * sideloads to report whether or not the feature exists.
+         * Check for Bluetooth LE Support.
          */
         if (!getPackageManager().hasSystemFeature(PackageManager.FEATURE_BLUETOOTH_LE)) {
-            Toast.makeText(this, "No LE Support.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "No LE Support.", Toast.LENGTH_LONG).show();
+            mHasLeSupport = false;
             return START_STICKY;
         }
-        this.scanningActive = true;
+
         return START_STICKY;
     }
 
-    public boolean isScanningActive() { return this.scanningActive; }
-
     public void pause() {
-        this.mBluetoothAdapter.stopLeScan(this);
+        Log.d(TAG, "Pausing scanning");
         this.scanningActive = false;
     }
 
     public void resume() {
-        this.mBluetoothAdapter.startLeScan(this);
+        Log.d(TAG, "Resuming scanning");
         this.scanningActive = true;
-        startScanningCycle();
+        startLeScan();
+        stopScanningCycle();
     }
 
     /**
-     * Scanning for 1 seconds, then notifies binders
+     * Only start LE scan if activated and device supports it
+     */
+    private void startLeScan() {
+        if(isScanningActive())
+            mBluetoothAdapter.startLeScan(BluetoothScannerService.this);
+    }
+    /**
+     * Scanning for INTERVAL, then IDLES for INTERVAL
+     * Cyclic
      */
     private void startScanningCycle() {
-        if (this.scanningActive) {
-            this.mHandler.postDelayed(new Runnable() {
-                @Override
-                public void run() {
-                    finishScanningCycle();
+        this.mHandler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                if(!mHasLeSupport)
+                    return;
+                if (scanningActive) {
+                    mBluetoothAdapter.startLeScan(BluetoothScannerService.this);
+                    stopScanningCycle();
+                } else {
+                    mBluetoothAdapter.stopLeScan(BluetoothScannerService.this);
+                }
+            }
+        }, INTERVAL);
+    }
+
+    /**
+     * This will stop the leScan and restart it if still active
+     */
+    private void stopScanningCycle() {
+        this.mHandler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                if(!mHasLeSupport)
+                    return;
+                mBluetoothAdapter.stopLeScan(BluetoothScannerService.this);
+                if (scanningActive) {
+                    Log.d(TAG, "Scheduling a new scancycle");
                     startScanningCycle();
                 }
-            }, 1000);
-        }
+                finishScanningCycle();
+            }
+        }, INTERVAL);
     }
 
     @Override
     public void onLeScan(BluetoothDevice device, int rssi, byte[] data) {
-        synchronized (mScanHistory) {
-            // Check that this isn't a device we have already seen, and add it to the list.
-            if (!mScanHistory.containsKey(device.getAddress())) {
-                mScanHistory.put(device.getAddress(), new LinkedBlockingDeque<Integer>());
-                // @HACK I have not figured out yet how to set Bluetooth Type in CSR code. This checks for
-                // vendor, 00025B	Cambridge Silicon
-                if (device.getType() == BluetoothDevice.DEVICE_TYPE_LE
-                        || device.getAddress().startsWith("00:02:5B:00")) {
-                    try {
-                        ScanItem item = mParser.handleFoundDevice(device, rssi, data);
-                        mScanResults.add(item);
-                        mScanHistory.get(device.getAddress()).add(rssi);
-                        Log.d(TAG, "Found " + item.toString());
-                    } catch (InvalidPropertiesFormatException e) {
-                        Log.d(TAG, "Skipping BLE device, not an iBeacon");
-                    }
+        /**
+         * Depending on beacon advert frequency, we get multiple callbacks from many devices
+         * Check that this isn't a device we have already seen, and add it to the list.
+         */
+        if (!mScanHistory.containsKey(device.getAddress())) {
+            mScanHistory.put(device.getAddress(), new LinkedBlockingDeque<Integer>());
+
+            if (device.getType() == BluetoothDevice.DEVICE_TYPE_LE
+                    || device.getAddress().startsWith(CAMBRIDGE_TAG)) {
+                try {
+
+                    ScanItem item = mParser.handleFoundDevice(device, rssi, data);
+                    mScanResults.add(item);
+                    mScanHistory.get(device.getAddress()).add(rssi);
+                } catch (InvalidPropertiesFormatException e) {
+                    Log.d(TAG, "Skipping BLE device, not an iBeacon" + device.toString());
                 }
             }
-            else {
-                   if (mScanHistory.get(device.getAddress()).size() > BUFFER_SIZE)
-                        mScanHistory.get(device.getAddress()).removeFirst();
-                    mScanHistory.get(device.getAddress()).add(rssi);
-            }
+        }
+        // Else, add the device to the history, pop first if history gets to big
+        // This will let us do some normalization of the values on each scan cycle
+        else {
+               if (mScanHistory.get(device.getAddress()).size() > BUFFER_SIZE)
+                    mScanHistory.get(device.getAddress()).removeFirst();
+                mScanHistory.get(device.getAddress()).add(rssi);
         }
     }
 
+    public final boolean isScanningActive() {
+        return (mHasLeSupport && scanningActive);
+    }
+
+
     private void finishScanningCycle() {
-        if (this.scanningActive) {
-            Log.d(TAG, "FINISHED SCANNING CYCLE");
-
-            synchronized (mScanHistory) {
-                for (Map.Entry<String, BlockingDeque<Integer>> entry : mScanHistory.entrySet()) {
-                    final BlockingDeque<Integer> values = entry.getValue();
-                    synchronized (values) {
-
-                        if (values.size() > BUFFER_SIZE) {
+        for (Map.Entry<String, BlockingDeque<Integer>> entry : mScanHistory.entrySet()) {
+            final BlockingDeque<Integer> values = entry.getValue();
 
 
-                            DescriptiveStatistics stats = BeaconFilter.statistics(values);
+            if (values.size() < BUFFER_SIZE) {
+                Log.d(TAG, entry.getKey() + ": Sorry, only got " + values.size() + " out of " + BUFFER_SIZE);
+            }
 
-                            /*Log.d(TAG, entry.getKey()
-                                    + "\nDistanceMean:" + stats.getMean()
-                                    + "\nGeoMean:" + stats.getGeometricMean()
-                                    + "\nSkew:" + stats.getSkewness()
-                                    + "\nStDev" + stats.getStandardDeviation()
-                                    + "\nVariance" + stats.getVariance()
-                                    + "\nPopVariance" + stats.getPopulationVariance());
-                            */
-                            for (ScanItem info : mScanResults) {
-                                if (info.getMacAddress().equalsIgnoreCase((entry.getKey()))) {
-                                    info.setRssi((int) stats.getMean());
-                                    break;
-                                }
-                            }
-                        }
+            DescriptiveStatistics stats = BeaconFilter.statistics(values);
+
+            synchronized (mScanResults) {
+                for (ScanItem info : mScanResults) {
+                    if (info.getMacAddress().equalsIgnoreCase((entry.getKey()))) {
+                        info.setRssi((int) stats.getMean());
+                        Log.d(TAG, entry.getKey() + ": Calculated mean of RSSI to " + info.getRssi());
+                        break;
                     }
                 }
             }
-
-            parcelIntent.putParcelableArrayListExtra(BluetoothScannerService.TAG_PARCEL, mScanResults);
-            sendBroadcast(parcelIntent);
+            mScanHistory.get(entry.getKey()).clear();
         }
+        parcelIntent.putParcelableArrayListExtra(BluetoothScannerService.TAG_PARCEL, mScanResults);
+        sendBroadcast(parcelIntent);
     }
 
     @Override
@@ -193,7 +218,7 @@ public class BluetoothScannerService extends Service implements BluetoothAdapter
         Log.d(TAG, "SERVICE DESTROYED");
         this.scanningActive = false;
 
-        if (this.mBluetoothAdapter != null) {
+        if (this.mBluetoothAdapter != null && mHasLeSupport) {
             this.mBluetoothAdapter.stopLeScan(this);
         }
         super.onDestroy();
