@@ -81,7 +81,7 @@ public class Trilateration {
         }
 
         public Double sqrDistance() {
-            return Math.pow(distance, 2);
+            return (distance == null ? 0 : Math.pow(distance, 2));
         }
 
         public Point getPosition() {
