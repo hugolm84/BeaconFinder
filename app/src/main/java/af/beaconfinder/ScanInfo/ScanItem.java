@@ -1,15 +1,10 @@
 package af.beaconfinder.ScanInfo;
 
-/**
- * Created by hugo on 11/02/15.
- */
-
+import android.os.Build;
 import android.os.Parcel;
 import android.os.Parcelable;
+import android.util.Log;
 
-/**
- * Created by hugo on 11/02/15.
- */
 public class ScanItem implements Comparable<ScanItem>, Parcelable {
 
     private final String proximityUUID;
@@ -18,7 +13,7 @@ public class ScanItem implements Comparable<ScanItem>, Parcelable {
     private final int major;
     private final int minor;
     private final int measuredPower;
-    private int rssi; //Updateable
+    private int rssi; //Updatable
 
     public ScanItem(final String proximityUUID, final String name, final String macAddress,
                     final int major, final int minor, final int measuredPower, final int rssi) {
@@ -28,7 +23,14 @@ public class ScanItem implements Comparable<ScanItem>, Parcelable {
         this.macAddress = macAddress;
         this.major = major;
         this.minor = minor;
-        this.measuredPower = measuredPower;
+
+        if(Build.MODEL.equals("SM-G850F")) {
+            Log.d("ScanItem", "Adjusting for Galaxy Alpha");
+            this.measuredPower = (int)(measuredPower*1.8);
+        }
+        else {
+            this.measuredPower = measuredPower;
+        }
         this.rssi = rssi;
 
     }
