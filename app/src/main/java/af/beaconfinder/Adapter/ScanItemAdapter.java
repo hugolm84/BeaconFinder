@@ -13,9 +13,8 @@ import java.util.ArrayList;
 import af.beaconfinder.R;
 import af.beaconfinder.ScanInfo.ScanItem;
 import af.beaconfinder.Beacon.BeaconFilter;
-/**
- * Created by hugo on 11/02/15.
- */
+
+
 public class ScanItemAdapter extends BaseAdapter {
 
     private final static String TAG = "ScanItemAdapter";
@@ -68,8 +67,6 @@ public class ScanItemAdapter extends BaseAdapter {
 
     @Override
     public void notifyDataSetChanged(){
-        // before notify. sort the data by RSSI.
-        //Collections.sort(items);
         super.notifyDataSetChanged();
     }
 }
