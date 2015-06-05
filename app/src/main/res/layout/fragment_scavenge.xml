@@ -13,21 +13,31 @@ tools:context="af.beaconfinder.Fragment.ScavengeFragment">
         android:layout_height="90dp"
         android:id="@+id/btn1"
         android:layout_gravity="right|top"
-        android:background="@drawable/circular_button" />
+        android:background="@drawable/circular_button"
+        android:text="7C" />
 
     <Button
         android:layout_width="90dp"
         android:layout_height="90dp"
         android:id="@+id/btn2"
         android:layout_gravity="center"
-        android:background="@drawable/circular_button" />
+        android:background="@drawable/circular_button"
+        android:text="4A" />
 
     <Button
         android:layout_width="90dp"
         android:layout_height="90dp"
         android:id="@+id/btn0"
         android:layout_gravity="left|top"
-        android:background="@drawable/circular_button" />
+        android:background="@drawable/circular_button"
+        android:text="45" />
 
 
+
+    <Button
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Scan"
+        android:id="@+id/scanButton"
+        android:layout_gravity="center_horizontal|bottom" />
 </FrameLayout>
