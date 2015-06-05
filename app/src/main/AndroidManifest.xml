@@ -26,6 +26,7 @@
             android:label="@string/title_activity_scan" >
         </activity>
 
+        <service android:name=".Socket.IO.SocketIOService"></service>
         <service
             android:name=".Service.BluetoothScannerService"
             android:enabled="true"
